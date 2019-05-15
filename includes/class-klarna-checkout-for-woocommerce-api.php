@@ -86,6 +86,7 @@ class Klarna_Checkout_For_WooCommerce_API {
 			$log_order               = clone $klarna_order;
 			$log_order->html_snippet = '';
 			krokedil_log_events( null, 'Pre Create Order response', $log_order );
+			KCO_WC()->logger->log( 'Create Order response ' . stripslashes_deep( json_encode( $log_order ) ) );
 			return $response;
 		} elseif ( 405 === $response['response']['code'] || 401 === $response['response']['code'] ) {
 			// 405 or 401 response from Klarna. Redirect customer to cart page and display the error message.
@@ -112,7 +113,7 @@ class Klarna_Checkout_For_WooCommerce_API {
 			$url = add_query_arg(
 				array(
 					'kco-order' => 'error',
-					'reason'    => base64_encode( $error->get_error_message() ? $error->get_error_message() : $response['response']['code'] . " " . $response['response']['message'] ),
+					'reason'    => base64_encode( $error->get_error_message() ? $error->get_error_message() : $response['response']['code'] . ' ' . $response['response']['message'] ),
 				),
 				wc_get_cart_url()
 			);
