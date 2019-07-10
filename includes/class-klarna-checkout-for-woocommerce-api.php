@@ -52,7 +52,8 @@ class Klarna_Checkout_For_WooCommerce_API {
 			'body'       => $this->get_request_body( 'create' ),
 			'timeout'    => 10,
 		);
-		$log_array    = array(
+
+		$log_array = array(
 			'headers'    => $request_args['headers'],
 			'user-agent' => $request_args['user-agent'],
 			'body'       => json_decode( $request_args['body'] ),
@@ -420,8 +421,6 @@ class Klarna_Checkout_For_WooCommerce_API {
 	 */
 	public function get_snippet( $order ) {
 		if ( ! is_wp_error( $order ) ) {
-			$this->maybe_clear_session_values( $order );
-
 			return $order->html_snippet;
 		}
 
@@ -433,18 +432,14 @@ class Klarna_Checkout_For_WooCommerce_API {
 	 *
 	 * @param Klarna_Order $order Klarna Checkout order.
 	 */
-	public function maybe_clear_session_values( $order ) {
-		if ( 'checkout_complete' === $order->status ) {
+	public function maybe_clear_session_values() {
 			WC()->session->__unset( 'kco_wc_update_md5' );
 			WC()->session->__unset( 'kco_wc_order_id' );
-			WC()->session->__unset( 'kco_wc_order_notes' );
 			WC()->session->__unset( 'kco_wc_order_api' );
 			WC()->session->__unset( 'kco_wc_extra_fields_values' );
 			WC()->session->__unset( 'kco_wc_prefill_consent' );
 			WC()->session->__unset( 'kco_checkout_form' );
 			WC()->session->__unset( 'kco_valid_checkout' );
-
-		}
 	}
 
 	/**
@@ -475,6 +470,11 @@ class Klarna_Checkout_For_WooCommerce_API {
 	 * @return string
 	 */
 	public function get_purchase_country() {
+		// Try to use customer country if available.
+		if ( ! empty( WC()->customer->get_billing_country() ) && strlen( WC()->customer->get_billing_country() ) === 2 ) {
+			return WC()->customer->get_billing_country( 'edit' );
+		}
+
 		$base_location = wc_get_base_location();
 		$country       = $base_location['country'];
 
@@ -532,6 +532,17 @@ class Klarna_Checkout_For_WooCommerce_API {
 	}
 
 	/**
+	 * Gets billing countries formatted for Klarna.
+	 * 
+	 * @return array
+	 */
+	public function get_billing_countries() {
+		$wc_countries = new WC_Countries();
+
+		return array_keys( $wc_countries->get_allowed_countries() );
+	}
+
+	/**
 	 * Gets Klarna API request headers.
 	 *
 	 * @return array
@@ -586,6 +597,7 @@ class Klarna_Checkout_For_WooCommerce_API {
 			'order_lines'        => $order_lines,
 			'shipping_countries' => $this->get_shipping_countries(),
 			'merchant_data'      => $this->get_merchant_data(),
+			'billing_countries'	 => $this->get_billing_countries(),
 		);
 
 		if ( kco_wc_prefill_allowed() ) {
@@ -609,6 +621,7 @@ class Klarna_Checkout_For_WooCommerce_API {
 		$request_args['options']['date_of_birth_mandatory']         = $this->get_dob_mandatory();
 		$request_args['options']['national_identification_number_mandatory'] = $this->get_dob_mandatory();
 		$request_args['options']['title_mandatory']                          = $this->get_title_mandatory();
+		$request_args['options']['require_validate_callback_success']        = true;
 
 		if ( $this->get_iframe_colors() ) {
 			$request_args['options'] = array_merge( $request_args['options'], $this->get_iframe_colors() );
@@ -621,6 +634,9 @@ class Klarna_Checkout_For_WooCommerce_API {
 		if ( ( array_key_exists( 'shipping_methods_in_iframe', $this->settings ) && 'yes' === $this->settings['shipping_methods_in_iframe'] ) && WC()->cart->needs_shipping() ) {
 			$request_args['shipping_options'] = $this->get_shipping_options();
 		}
+
+		// Check if WooCommerce setting for checkout phone field is mandatory.
+		$request_args['options']['phone_mandatory'] = 'required' === get_option( 'woocommerce_checkout_phone_field', 'required' ); // Bool.
 
 		// Allow external payment method plugin to do its thing.
 		// @TODO: Extract this into a hooked function.

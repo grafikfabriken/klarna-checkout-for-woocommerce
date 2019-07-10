@@ -56,10 +56,11 @@ class Klarna_Checkout_For_WooCommerce_Gateway extends WC_Payment_Gateway {
 		);
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
-		add_action( 'woocommerce_thankyou_' . $this->id, array( $this, 'show_thank_you_snippet' ) );
 		add_action( 'woocommerce_admin_order_data_after_billing_address', array( $this, 'address_notice' ) );
 		add_action( 'woocommerce_checkout_init', array( $this, 'prefill_consent' ) );
 		add_action( 'woocommerce_checkout_init', array( $this, 'show_log_in_notice' ) );
+		add_action( 'woocommerce_thankyou_' . $this->id, array( $this, 'show_thank_you_snippet' ) );
+		add_action( 'woocommerce_thankyou', array( $this, 'maybe_delete_klarna_sessions' ), 100, 1 );
 
 		// Remove WooCommerce footer text from our settings page.
 		add_filter( 'admin_footer_text', array( $this, 'admin_footer_text' ), 999 );
@@ -362,6 +363,10 @@ class Klarna_Checkout_For_WooCommerce_Gateway extends WC_Payment_Gateway {
 			$klarna_country = wc_get_base_location()['country'];
 			update_post_meta( $order_id, '_wc_klarna_country', $klarna_country );
 
+			// Set shipping phone and email.
+			update_post_meta( $order_id, '_shipping_phone', sanitize_text_field( $klarna_order->shipping_address->phone ) );
+			update_post_meta( $order_id, '_shipping_email', sanitize_text_field( $klarna_order->shipping_address->email ) );
+
 			$response = KCO_WC()->api->request_post_get_order( $klarna_order->order_id, $order_id );
 			if ( is_wp_error( $response ) ) {
 				// Request error. Set order status to On hold and print the error message as a note.
@@ -371,13 +376,15 @@ class Klarna_Checkout_For_WooCommerce_Gateway extends WC_Payment_Gateway {
 			} else {
 				$klarna_post_order = json_decode( $response['body'] );
 
+				do_action( 'kco_wc_process_payment', $order_id, $klarna_order );
+
 				// Remove html_snippet from what we're logging.
 				$log_order               = clone $klarna_post_order;
 				$log_order->html_snippet = '';
 				krokedil_log_events( $order_id, 'Klarna post_order in process_payment_handler', $log_order );
 				KCO_WC()->logger->log( 'Order processed (process_payment_handler) for Klarna order ID ' . $klarna_order_id . '. WC order ID ' . $order_id . '. Post order info ' . stripslashes_deep( json_encode( $log_order ) ) );
 				if ( 'ACCEPTED' === $klarna_post_order->fraud_status ) {
-					$order->payment_complete();
+					$order->payment_complete( $klarna_order_id );
 					// translators: Klarna order ID.
 					$note = sprintf( __( 'Payment via Klarna Checkout, order ID: %s', 'klarna-checkout-for-woocommerce' ), sanitize_key( $klarna_order->order_id ) );
 					$order->add_order_note( $note );
@@ -408,9 +415,6 @@ class Klarna_Checkout_For_WooCommerce_Gateway extends WC_Payment_Gateway {
 	 * @param int $order_id WooCommerce order ID.
 	 */
 	public function show_thank_you_snippet( $order_id = null ) {
-		if ( ! WC()->session->get( 'kco_wc_order_id' ) ) {
-			return;
-		}
 
 		if ( $order_id ) {
 			$order = wc_get_order( $order_id );
@@ -523,5 +527,14 @@ class Klarna_Checkout_For_WooCommerce_Gateway extends WC_Payment_Gateway {
 			}
 		}
 		return $class;
+	}
+
+	/**
+	 * Unsets Klarna specific WC sessions.
+	 *
+	 * @param string $order_id WC Order id.
+	 */
+	public function maybe_delete_klarna_sessions( $order_id ) {
+		KCO_WC()->api->maybe_clear_session_values();
 	}
 }
