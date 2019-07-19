@@ -62,7 +62,6 @@ class Klarna_Checkout_For_WooCommerce_API {
 		KCO_WC()->logger->log( 'Create Klarna order (' . $request_url . ') ' . stripslashes_deep( json_encode( $request_args ) ) );
 		krokedil_log_events( null, 'Pre Create Order request args', $log_array );
 		$response = wp_safe_remote_post( $request_url, $request_args );
-
 		// If request is_wp_error() redirect customer to cart page and display the error message.
 		if ( is_wp_error( $response ) ) {
 			$error = $this->extract_error_messages( $response );
@@ -87,7 +86,6 @@ class Klarna_Checkout_For_WooCommerce_API {
 			$log_order               = clone $klarna_order;
 			$log_order->html_snippet = '';
 			krokedil_log_events( null, 'Pre Create Order response', $log_order );
-			KCO_WC()->logger->log( 'Create Order response ' . stripslashes_deep( json_encode( $log_order ) ) );
 			return $response;
 		} elseif ( 405 === $response['response']['code'] || 401 === $response['response']['code'] ) {
 			// 405 or 401 response from Klarna. Redirect customer to cart page and display the error message.
@@ -532,17 +530,6 @@ class Klarna_Checkout_For_WooCommerce_API {
 	}
 
 	/**
-	 * Gets billing countries formatted for Klarna.
-	 * 
-	 * @return array
-	 */
-	public function get_billing_countries() {
-		$wc_countries = new WC_Countries();
-
-		return array_keys( $wc_countries->get_allowed_countries() );
-	}
-
-	/**
 	 * Gets Klarna API request headers.
 	 *
 	 * @return array
@@ -597,7 +584,6 @@ class Klarna_Checkout_For_WooCommerce_API {
 			'order_lines'        => $order_lines,
 			'shipping_countries' => $this->get_shipping_countries(),
 			'merchant_data'      => $this->get_merchant_data(),
-			'billing_countries'	 => $this->get_billing_countries(),
 		);
 
 		if ( kco_wc_prefill_allowed() ) {

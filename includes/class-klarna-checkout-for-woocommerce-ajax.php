@@ -62,7 +62,6 @@ class Klarna_Checkout_For_WooCommerce_AJAX extends WC_AJAX {
 			$new_quantity = (int) $cart_value['qty'];
 			WC()->cart->set_quantity( $cart_key, $new_quantity, false );
 		}
-
 		WC()->cart->calculate_fees();
 		WC()->cart->calculate_totals();
 		KCO_WC()->api->request_pre_update_order();
@@ -82,25 +81,17 @@ class Klarna_Checkout_For_WooCommerce_AJAX extends WC_AJAX {
 		wc_maybe_define_constant( 'WOOCOMMERCE_CART', true );
 
 		if ( isset( $_POST['data'] ) && is_array( $_POST['data'] ) ) {
-			$shipping_option         = $_POST['data'];
-			$chosen_shipping_methods = array();
-			// $chosen_shipping_methods[] = wc_clean( $shipping_option['id'] );
-			// Testing.
-			$chosen_shipping_methods[] = 'flat_rate:10';
-			WC()->session->set( 'chosen_shipping_methods', $chosen_shipping_methods );
-
-			WC()->session->set( 'kco_wc_kss_data', $shipping_option );
-			WC_Cache_Helper::get_transient_version( 'shipping', true );
-			// End testing.
+			$shipping_option           = $_POST['data'];
+			$chosen_shipping_methods   = array();
+			$chosen_shipping_methods[] = wc_clean( $shipping_option['id'] );
+			WC()->session->set( 'chosen_shipping_methods', apply_filters( 'kco_wc_chosen_shipping_method', $chosen_shipping_methods ) );
 		}
-
 		WC()->cart->calculate_shipping();
 		WC()->cart->calculate_fees();
 		WC()->cart->calculate_totals();
 		KCO_WC()->api->request_pre_update_order();
 
-		// $shipping_option_name = 'shipping_method_0_' . str_replace( ':', '', $shipping_option['id'] );
-		$shipping_option_name = 'shipping_method_0_' . str_replace( ':', '', 'flat_rate_10' );
+		$shipping_option_name = 'shipping_method_0_' . str_replace( ':', '', $shipping_option['id'] );
 		$data                 = array(
 			'shipping_option_name' => $shipping_option_name,
 		);

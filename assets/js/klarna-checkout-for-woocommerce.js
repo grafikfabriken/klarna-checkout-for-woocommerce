@@ -527,7 +527,8 @@ jQuery(function($) {
 									},
 									complete: function(response) {
 										$('#shipping_method #' + response.responseJSON.data.shipping_option_name).prop('checked', true);
-										$('body').trigger('kco_shipping_option_changed');
+										console.log( 'triggering TMS stuff.' );
+										$('body').trigger('kco_shipping_option_changed', [ data ] );
 										$('.woocommerce-checkout-review-order-table').unblock();
 										kco_wc.kcoResume();
 									}

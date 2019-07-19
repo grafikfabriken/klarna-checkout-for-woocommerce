@@ -37,7 +37,6 @@ class Klarna_Checkout_For_Woocommerce_KSS {
 				// $rate->taxes[1] = 1000 * 0.2;
 			}
 		}
-		error_log( 'woocommerce_package_rates 2' );
 
 		return $rates;
 	}

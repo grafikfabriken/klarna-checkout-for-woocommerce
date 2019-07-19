@@ -729,7 +729,6 @@ class Klarna_Checkout_For_WooCommerce_Order_Lines {
 		}
 		*/
 
-		// error_log( 'tax rate ' . var_export( WC_Tax::get_shipping_tax_rates(), true ) );
 		if ( WC()->cart->shipping_tax_total > 0 && ! $this->separate_sales_tax ) {
 			$shipping_rates = WC_Tax::get_shipping_tax_rates();
 			$vat            = array_shift( $shipping_rates );
