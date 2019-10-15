@@ -296,7 +296,7 @@ class Klarna_Checkout_For_WooCommerce_API_Callbacks {
 				}
 
 				if ( $cart_item_product ) {
-					if ( ! $cart_item_product->has_enough_stock( $cart_item['quantity'] ) || 'outofstock' === $cart_item_product->get_stock_status() ) {
+					if ( ! $cart_item_product->has_enough_stock( $cart_item['quantity'] ) || ( !$cart_item_product->managing_stock() && 'outofstock' === $cart_item_product->get_stock_status() )) {
 						$all_in_stock = false;
 					}
 					if ( ! $cart_item_product->is_virtual() ) {
